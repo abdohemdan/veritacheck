@@ -1020,6 +1020,9 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
 <script>
+/* Variabili globali dichiarate subito */
+var currentTab = 'testo';
+
 /* ── CURSOR ── */
 const cur = document.getElementById('cursor');
 const ring = document.getElementById('cursor-ring');
@@ -1139,7 +1142,6 @@ window.addEventListener('scroll', () => {
 })();
 
 /* ── TABS ── */
-let currentTab = 'testo';
 function switchTab(tab, btn) {
   currentTab = tab;
   document.querySelectorAll('.tool-panel').forEach(p=>p.classList.remove('active'));
