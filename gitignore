@@ -1,0 +1,7 @@
+# Mai su GitHub
+config/keys.php
+debug_gemini.php
+test_gemini.php
+cacert.pem
+*.log
+.DS_Store
