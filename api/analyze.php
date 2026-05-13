@@ -128,6 +128,8 @@ function callGemini(string $content, string $tipo, string $apiKey, ?string $imag
         $text = substr($text, $start, $end - $start + 1);
     }
     $text = trim($text);
+    // Rimuovi caratteri di controllo che Gemini 2.5 inserisce nel testo di ragionamento
+    $text = preg_replace('/[\x00-\x1F\x7F]/', '', $text);
     $parsed = json_decode($text, true);
     return (json_last_error() === JSON_ERROR_NONE) ? $parsed : ['error' => 'JSON non valido: '.json_last_error_msg()];
 }
