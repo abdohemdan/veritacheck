@@ -105,7 +105,7 @@ function callGemini(string $content, string $tipo, string $apiKey, ?string $imag
         : [['text'=>$prompt]];
 
     $payload = json_encode(['contents'=>[['parts'=>$parts]],'generationConfig'=>['temperature'=>0.2,'maxOutputTokens'=>1024]]);
-    $url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key='.urlencode($apiKey);
+    $url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key='.urlencode($apiKey);
 
     $ch = curl_init($url);
     curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER=>true,CURLOPT_POST=>true,CURLOPT_POSTFIELDS=>$payload,CURLOPT_HTTPHEADER=>['Content-Type: application/json'],CURLOPT_TIMEOUT=>30,CURLOPT_SSL_VERIFYPEER=>true]);
@@ -128,9 +128,16 @@ function callGemini(string $content, string $tipo, string $apiKey, ?string $imag
         $text = substr($text, $start, $end - $start + 1);
     }
     $text = trim($text);
-    // Rimuovi caratteri di controllo che Gemini 2.5 inserisce nel testo di ragionamento
-    $text = preg_replace('/[\x00-\x1F\x7F]/', '', $text);
+    // Rimuovi tutti i caratteri di controllo tranne newline/tab (Gemini 2.5 reasoning)
+    $text = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/u', '', $text);
+    // Converti in UTF-8 pulito
+    $text = mb_convert_encoding($text, 'UTF-8', 'UTF-8');
     $parsed = json_decode($text, true);
+    if (json_last_error() !== JSON_ERROR_NONE) {
+        // Ultimo tentativo: prendi solo caratteri ASCII stampabili + spazi
+        $text = preg_replace('/[^\x20-\x7E\n\r\t]/u', '', $text);
+        $parsed = json_decode($text, true);
+    }
     return (json_last_error() === JSON_ERROR_NONE) ? $parsed : ['error' => 'JSON non valido: '.json_last_error_msg()];
 }
 
