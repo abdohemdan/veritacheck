@@ -121,6 +121,77 @@
       position: absolute;
       inset: 0;
       width: 100%; height: 100%;
+      overflow: hidden;
+    }
+
+    /* CSS-only dot-sphere effect */
+    .globe-sphere {
+      position: absolute;
+      top: 50%; left: 50%;
+      width: 520px; height: 520px;
+      transform: translate(-50%, -50%);
+      border-radius: 50%;
+      animation: globeSpin 28s linear infinite;
+    }
+
+    @keyframes globeSpin {
+      from { transform: translate(-50%, -50%) rotateY(0deg) rotateX(15deg); }
+      to   { transform: translate(-50%, -50%) rotateY(360deg) rotateX(15deg); }
+    }
+
+    .globe-ring {
+      position: absolute;
+      top: 50%; left: 50%;
+      border-radius: 50%;
+      border: 1px solid rgba(100, 100, 200, 0.12);
+      transform-style: preserve-3d;
+    }
+
+    .globe-dot {
+      position: absolute;
+      width: 2px; height: 2px;
+      background: rgba(130, 130, 220, 0.55);
+      border-radius: 50%;
+      top: 50%; left: 50%;
+      transform-origin: center center;
+      animation: dotPulse var(--dur, 4s) ease-in-out infinite;
+      animation-delay: var(--delay, 0s);
+    }
+    @keyframes dotPulse {
+      0%, 100% { opacity: 0.35; }
+      50% { opacity: 0.9; }
+    }
+
+    /* Arcs */
+    .globe-arc {
+      position: absolute;
+      top: 50%; left: 50%;
+      width: var(--w); height: var(--h);
+      margin-left: calc(var(--w) / -2);
+      margin-top: calc(var(--h) / -2);
+      border-radius: 50%;
+      border: 1px solid transparent;
+      border-top-color: rgba(120, 120, 255, 0.35);
+      animation: arcSpin var(--dur, 8s) linear infinite var(--delay, 0s);
+      opacity: 0;
+      animation-fill-mode: both;
+    }
+    @keyframes arcSpin {
+      0%   { opacity: 0; transform: rotate(var(--start, 0deg)); }
+      15%  { opacity: 0.6; }
+      85%  { opacity: 0.6; }
+      100% { opacity: 0; transform: rotate(calc(var(--start, 0deg) + 360deg)); }
+    }
+
+    /* Ambient glow behind globe */
+    .globe-glow {
+      position: absolute;
+      top: 50%; left: 50%;
+      width: 600px; height: 600px;
+      transform: translate(-50%, -50%);
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(40,40,160,0.12) 0%, transparent 70%);
+      pointer-events: none;
     }
     .hero-overlay {
       position: absolute;
@@ -776,7 +847,7 @@
 
 <!-- HERO -->
 <section id="hero">
-  <canvas id="globe-canvas"></canvas>
+  <div id="globe-canvas" aria-hidden="true"></div>
   <div class="hero-overlay"></div>
   <div class="hero-content">
     <div class="hero-badge">
@@ -1017,9 +1088,6 @@
   <div class="footer-note">Progetto capolavoro — Istituto Tecnico Informatica · 2024/2025</div>
 </footer>
 
-<!-- THREE.JS -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-
 <script>
 /* ── CURSOR ── */
 const cur = document.getElementById('cursor');
@@ -1038,105 +1106,72 @@ window.addEventListener('scroll', () => {
   document.getElementById('nav').classList.toggle('scrolled', window.scrollY > 40);
 });
 
-/* ── GLOBE ── */
-(function initGlobe() {
-  const canvas = document.getElementById('globe-canvas');
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
-  const W = window.innerWidth, H = window.innerHeight;
-  renderer.setSize(W, H);
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-  renderer.setClearColor(0x060608, 1);
+/* ── CSS GLOBE (no WebGL) ── */
+(function buildGlobe() {
+  const container = document.getElementById('globe-canvas');
+  if (!container) return;
 
-  const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(40, W / H, 0.1, 100);
-  camera.position.z = 3.2;
+  // Ambient glow
+  const glow = document.createElement('div');
+  glow.className = 'globe-glow';
+  container.appendChild(glow);
 
-  const R = 1.0;
+  // Orbit rings
+  const ringDefs = [
+    {w:520,h:520,tilt:15},
+    {w:440,h:160,tilt:75},
+    {w:380,h:380,tilt:45},
+    {w:300,h:520,tilt:0},
+    {w:200,h:520,tilt:0},
+    {w:520,h:200,tilt:90},
+  ];
+  ringDefs.forEach(r => {
+    const el = document.createElement('div');
+    el.className = 'globe-ring';
+    el.style.cssText = `width:${r.w}px;height:${r.h}px;margin-left:${-r.w/2}px;margin-top:${-r.h/2}px;transform:rotate(${r.tilt}deg);opacity:0.6`;
+    container.appendChild(el);
+  });
 
-  /* Dot sphere */
-  const dotPositions = [];
-  const N = 3200;
+  // Scattered dots — placed in fibonacci spiral projected to 2D sphere silhouette
+  const N = 220;
+  const R = 240;
   const phi = Math.PI * (3 - Math.sqrt(5));
   for (let i = 0; i < N; i++) {
     const y  = 1 - (i / (N - 1)) * 2;
     const r  = Math.sqrt(1 - y * y);
     const th = phi * i;
-    dotPositions.push(R * r * Math.cos(th), R * y, R * r * Math.sin(th));
+    const px = R * r * Math.cos(th);
+    const py = R * y;
+    // Simple perspective: dots near edges are smaller/dimmer
+    const depth = r;
+    const dot = document.createElement('div');
+    dot.className = 'globe-dot';
+    dot.style.cssText = `
+      margin-left:${px}px;
+      margin-top:${py}px;
+      opacity:${0.2 + depth * 0.6};
+      transform:scale(${0.7 + depth * 0.6});
+      --dur:${3 + Math.random() * 5}s;
+      --delay:${(Math.random() * 5).toFixed(2)}s
+    `;
+    container.appendChild(dot);
   }
-  const dotGeo = new THREE.BufferGeometry();
-  dotGeo.setAttribute('position', new THREE.Float32BufferAttribute(dotPositions, 3));
-  const dotMat = new THREE.PointsMaterial({ color: 0x4a4a7a, size: 0.012, sizeAttenuation: true });
-  const dotMesh = new THREE.Points(dotGeo, dotMat);
 
-  /* Wireframe sphere */
-  const sphereGeo = new THREE.SphereGeometry(R, 32, 32);
-  const wireMat = new THREE.MeshBasicMaterial({
-    color: 0x1a1a3a, wireframe: true, transparent: true, opacity: 0.18
-  });
-  const wireMesh = new THREE.Mesh(sphereGeo, wireMat);
-
-  const globe = new THREE.Group();
-  globe.add(dotMesh, wireMesh);
-  scene.add(globe);
-
-  /* Ambient glow */
-  const glowGeo = new THREE.SphereGeometry(R * 1.08, 32, 32);
-  const glowMat = new THREE.MeshBasicMaterial({
-    color: 0x2222aa, transparent: true, opacity: 0.04, side: THREE.BackSide
-  });
-  globe.add(new THREE.Mesh(glowGeo, glowMat));
-
-  /* Arcs */
-  const arcMetas = [];
-  function makeArc(p1, p2) {
-    const v1 = new THREE.Vector3(...p1).normalize().multiplyScalar(R);
-    const v2 = new THREE.Vector3(...p2).normalize().multiplyScalar(R);
-    const mid = v1.clone().add(v2).multiplyScalar(0.5);
-    mid.normalize().multiplyScalar(R * 1.35);
-    const curve = new THREE.QuadraticBezierCurve3(v1, mid, v2);
-    const pts = curve.getPoints(40);
-    const geo = new THREE.BufferGeometry().setFromPoints(pts);
-    const mat = new THREE.LineBasicMaterial({ color: 0x6666cc, transparent: true, opacity: 0 });
-    const line = new THREE.Line(geo, mat);
-    globe.add(line);
-    arcMetas.push({ line, delay: Math.random() * 5, dur: 1.5 + Math.random() * 2 });
-  }
-  const pts3d = [
-    [0.8,0.5,0.3],[-0.6,0.7,0.4],[0.2,-0.8,0.6],[-0.4,0.3,-0.9],
-    [0.9,-0.2,0.4],[-0.7,-0.5,0.5],[0.1,0.9,-0.4],[0.6,0.2,-0.8],
-    [-0.3,-0.9,0.3],[0.5,0.6,0.6]
+  // Animated arcs
+  const arcDefs = [
+    {w:380,h:200,start: 30, dur: 9,  delay:0},
+    {w:260,h:400,start:120, dur:11,  delay:1.5},
+    {w:460,h:300,start:200, dur: 8,  delay:3},
+    {w:320,h:460,start: 80, dur:13,  delay:0.8},
+    {w:180,h:380,start:300, dur:10,  delay:2.2},
+    {w:400,h:180,start:240, dur: 7,  delay:4},
   ];
-  for (let i = 0; i < 8; i++) makeArc(pts3d[i], pts3d[(i+3)%pts3d.length]);
-
-  /* Drag */
-  let drag=false, lx=0, ly=0, vx=0, vy=0;
-  canvas.addEventListener('mousedown', e => { drag=true; lx=e.clientX; ly=e.clientY; });
-  window.addEventListener('mouseup', () => { drag=false; });
-  window.addEventListener('mousemove', e => {
-    if (!drag) return;
-    vx += (e.clientX-lx)*0.005; vy += (e.clientY-ly)*0.005;
-    lx=e.clientX; ly=e.clientY;
+  arcDefs.forEach(a => {
+    const el = document.createElement('div');
+    el.className = 'globe-arc';
+    el.style.cssText = `--w:${a.w}px;--h:${a.h}px;--start:${a.start}deg;--dur:${a.dur}s;--delay:${a.delay}s`;
+    container.appendChild(el);
   });
-
-  window.addEventListener('resize', () => {
-    const W2=window.innerWidth, H2=window.innerHeight;
-    renderer.setSize(W2,H2);
-    camera.aspect=W2/H2; camera.updateProjectionMatrix();
-  });
-
-  let t=0, rotX=0, rotY=0;
-  (function anim(){
-    requestAnimationFrame(anim);
-    t+=0.016;
-    if(!drag){ vy+=0.0025; } vx*=0.92; vy*=0.92;
-    rotX+=vx; rotY+=vy;
-    globe.rotation.x=rotX; globe.rotation.y=rotY;
-    arcMetas.forEach(a=>{
-      const e=(t-a.delay)%(a.dur+3);
-      a.line.material.opacity = e<0||e>a.dur ? 0 : 0.55*Math.sin(Math.PI*e/a.dur);
-    });
-    renderer.render(scene,camera);
-  })();
 })();
 
 /* ── TABS ── */
