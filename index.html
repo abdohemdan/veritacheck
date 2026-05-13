@@ -39,27 +39,7 @@
       cursor: default;
     }
 
-    /* ── CUSTOM CURSOR ── */
-    .cursor {
-      width: 8px; height: 8px;
-      background: white;
-      border-radius: 50%;
-      position: fixed;
-      pointer-events: none;
-      z-index: 9999;
-      transform: translate(-50%, -50%);
-      transition: transform 0.1s, width 0.2s, height 0.2s, opacity 0.2s;
-    }
-    .cursor-ring {
-      width: 32px; height: 32px;
-      border: 1px solid rgba(255,255,255,0.4);
-      border-radius: 50%;
-      position: fixed;
-      pointer-events: none;
-      z-index: 9998;
-      transform: translate(-50%, -50%);
-      transition: transform 0.15s ease-out, width 0.25s, height 0.25s;
-    }
+    
 
     /* ── NAV ── */
     nav {
@@ -115,12 +95,18 @@
       align-items: center;
       justify-content: center;
       overflow: hidden;
+      background: radial-gradient(ellipse 80% 60% at 50% 40%, rgba(40,40,120,0.35) 0%, transparent 70%),
+                  radial-gradient(ellipse 40% 40% at 20% 70%, rgba(20,20,80,0.2) 0%, transparent 60%),
+                  var(--bg);
     }
-    #globe-canvas {
+    .hero-dots {
       position: absolute;
       inset: 0;
-      width: 100%; height: 100%;
+      background-image: radial-gradient(rgba(255,255,255,0.06) 1px, transparent 1px);
+      background-size: 32px 32px;
+      pointer-events: none;
     }
+    
     .hero-overlay {
       position: absolute;
       inset: 0;
@@ -759,8 +745,6 @@
 </head>
 <body>
 
-<div class="cursor" id="cursor"></div>
-<div class="cursor-ring" id="cursor-ring"></div>
 
 <!-- NAV -->
 <nav id="nav">
@@ -775,7 +759,7 @@
 
 <!-- HERO -->
 <section id="hero">
-  <canvas id="globe-canvas"></canvas>
+  <div class="hero-dots"></div>
   <div class="hero-overlay"></div>
   <div class="hero-content">
     <div class="hero-badge">
@@ -1002,7 +986,7 @@
       <span class="tech-pill hl">CSS3</span>
       <span class="tech-pill hl">JavaScript</span>
       <span class="tech-pill hl">Three.js</span>
-      <span class="tech-pill hl">Gemini AI API</span>
+      <span class="tech-pill hl">Claude AI API</span>
       <span class="tech-pill hl">PHP 8</span>
       <span class="tech-pill hl">Google Fact Check API</span>
       <span class="tech-pill hl">MySQL</span>
@@ -1013,132 +997,21 @@
 <!-- FOOTER -->
 <footer>
   <div class="footer-logo">Verità<span>Check</span></div>
-  <div class="footer-note">Progetto capolavoro — Istituto Tecnico Informatica · 2025/2026</div>
+  <div class="footer-note">Progetto capolavoro — Istituto Tecnico Informatica · 2024/2025</div>
 </footer>
-
-<!-- THREE.JS -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
 <script>
 /* Variabili globali dichiarate subito */
 var currentTab = 'testo';
 
-/* ── CURSOR ── */
-const cur = document.getElementById('cursor');
-const ring = document.getElementById('cursor-ring');
-let mx = 0, my = 0, rx = 0, ry = 0;
-document.addEventListener('mousemove', e => { mx = e.clientX; my = e.clientY; });
-(function animCursor() {
-  rx += (mx - rx) * 0.12; ry += (my - ry) * 0.12;
-  cur.style.left = mx + 'px'; cur.style.top = my + 'px';
-  ring.style.left = rx + 'px'; ring.style.top = ry + 'px';
-  requestAnimationFrame(animCursor);
-})();
+
 
 /* ── NAV SCROLL ── */
 window.addEventListener('scroll', () => {
   document.getElementById('nav').classList.toggle('scrolled', window.scrollY > 40);
 });
 
-/* ── GLOBE ── */
-(function initGlobe() {
-  const canvas = document.getElementById('globe-canvas');
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
-  const W = window.innerWidth, H = window.innerHeight;
-  renderer.setSize(W, H);
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-  renderer.setClearColor(0x060608, 1);
 
-  const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(40, W / H, 0.1, 100);
-  camera.position.z = 3.2;
-
-  const R = 1.0;
-
-  /* Dot sphere */
-  const dotPositions = [];
-  const N = 3200;
-  const phi = Math.PI * (3 - Math.sqrt(5));
-  for (let i = 0; i < N; i++) {
-    const y  = 1 - (i / (N - 1)) * 2;
-    const r  = Math.sqrt(1 - y * y);
-    const th = phi * i;
-    dotPositions.push(R * r * Math.cos(th), R * y, R * r * Math.sin(th));
-  }
-  const dotGeo = new THREE.BufferGeometry();
-  dotGeo.setAttribute('position', new THREE.Float32BufferAttribute(dotPositions, 3));
-  const dotMat = new THREE.PointsMaterial({ color: 0x4a4a7a, size: 0.012, sizeAttenuation: true });
-  const dotMesh = new THREE.Points(dotGeo, dotMat);
-
-  /* Wireframe sphere */
-  const sphereGeo = new THREE.SphereGeometry(R, 32, 32);
-  const wireMat = new THREE.MeshBasicMaterial({
-    color: 0x1a1a3a, wireframe: true, transparent: true, opacity: 0.18
-  });
-  const wireMesh = new THREE.Mesh(sphereGeo, wireMat);
-
-  const globe = new THREE.Group();
-  globe.add(dotMesh, wireMesh);
-  scene.add(globe);
-
-  /* Ambient glow */
-  const glowGeo = new THREE.SphereGeometry(R * 1.08, 32, 32);
-  const glowMat = new THREE.MeshBasicMaterial({
-    color: 0x2222aa, transparent: true, opacity: 0.04, side: THREE.BackSide
-  });
-  globe.add(new THREE.Mesh(glowGeo, glowMat));
-
-  /* Arcs */
-  const arcMetas = [];
-  function makeArc(p1, p2) {
-    const v1 = new THREE.Vector3(...p1).normalize().multiplyScalar(R);
-    const v2 = new THREE.Vector3(...p2).normalize().multiplyScalar(R);
-    const mid = v1.clone().add(v2).multiplyScalar(0.5);
-    mid.normalize().multiplyScalar(R * 1.35);
-    const curve = new THREE.QuadraticBezierCurve3(v1, mid, v2);
-    const pts = curve.getPoints(40);
-    const geo = new THREE.BufferGeometry().setFromPoints(pts);
-    const mat = new THREE.LineBasicMaterial({ color: 0x6666cc, transparent: true, opacity: 0 });
-    const line = new THREE.Line(geo, mat);
-    globe.add(line);
-    arcMetas.push({ line, delay: Math.random() * 5, dur: 1.5 + Math.random() * 2 });
-  }
-  const pts3d = [
-    [0.8,0.5,0.3],[-0.6,0.7,0.4],[0.2,-0.8,0.6],[-0.4,0.3,-0.9],
-    [0.9,-0.2,0.4],[-0.7,-0.5,0.5],[0.1,0.9,-0.4],[0.6,0.2,-0.8],
-    [-0.3,-0.9,0.3],[0.5,0.6,0.6]
-  ];
-  for (let i = 0; i < 8; i++) makeArc(pts3d[i], pts3d[(i+3)%pts3d.length]);
-
-  /* Drag */
-  let drag=false, lx=0, ly=0, vx=0, vy=0;
-  canvas.addEventListener('mousedown', e => { drag=true; lx=e.clientX; ly=e.clientY; });
-  window.addEventListener('mouseup', () => { drag=false; });
-  window.addEventListener('mousemove', e => {
-    if (!drag) return;
-    vx += (e.clientX-lx)*0.005; vy += (e.clientY-ly)*0.005;
-    lx=e.clientX; ly=e.clientY;
-  });
-
-  window.addEventListener('resize', () => {
-    const W2=window.innerWidth, H2=window.innerHeight;
-    renderer.setSize(W2,H2);
-    camera.aspect=W2/H2; camera.updateProjectionMatrix();
-  });
-
-  let t=0, rotX=0, rotY=0;
-  (function anim(){
-    requestAnimationFrame(anim);
-    t+=0.016;
-    if(!drag){ vy+=0.0025; } vx*=0.92; vy*=0.92;
-    rotX+=vx; rotY+=vy;
-    globe.rotation.x=rotX; globe.rotation.y=rotY;
-    arcMetas.forEach(a=>{
-      const e=(t-a.delay)%(a.dur+3);
-      a.line.material.opacity = e<0||e>a.dur ? 0 : 0.55*Math.sin(Math.PI*e/a.dur);
-    });
-    renderer.render(scene,camera);
-  })();
 })();
 
 /* ── TABS ── */
