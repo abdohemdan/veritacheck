@@ -118,9 +118,18 @@ function callGemini(string $content, string $tipo, string $apiKey, ?string $imag
     if ($httpCode !== 200) { $e = json_decode($response,true); return ['error' => $e['error']['message'] ?? "HTTP $httpCode"]; }
 
     $data = json_decode($response, true);
-    $text = trim(preg_replace('/```json|```/i', '', $data['candidates'][0]['content']['parts'][0]['text'] ?? ''));
+    $text = $data['candidates'][0]['content']['parts'][0]['text'] ?? '';
+    // Rimuovi backtick markdown
+    $text = preg_replace('/```json|```/i', '', $text);
+    // Estrai solo il blocco JSON (dalla prima { all'ultima })
+    $start = strpos($text, '{');
+    $end   = strrpos($text, '}');
+    if ($start !== false && $end !== false && $end > $start) {
+        $text = substr($text, $start, $end - $start + 1);
+    }
+    $text = trim($text);
     $parsed = json_decode($text, true);
-    return (json_last_error() === JSON_ERROR_NONE) ? $parsed : ['error' => 'JSON non valido'];
+    return (json_last_error() === JSON_ERROR_NONE) ? $parsed : ['error' => 'JSON non valido: '.json_last_error_msg()];
 }
 
 function callFactCheck(string $query, string $apiKey): array {
