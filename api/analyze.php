@@ -104,8 +104,8 @@ function callGemini(string $content, string $tipo, string $apiKey, ?string $imag
         ? [['text'=>$prompt],['inline_data'=>['mime_type'=>$imageMediaType,'data'=>$imageData]]]
         : [['text'=>$prompt]];
 
-    $payload = json_encode(['contents'=>[['parts'=>$parts]],'generationConfig'=>['temperature'=>0.2,'maxOutputTokens'=>1024],'thinkingConfig'=>['thinkingBudget'=>0]]);
-    $url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key='.urlencode($apiKey);
+    $payload = json_encode(['contents'=>[['parts'=>$parts]],'generationConfig'=>['temperature'=>0.2,'maxOutputTokens'=>1024]]);
+    $url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key='.urlencode($apiKey);
 
     $ch = curl_init($url);
     curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER=>true,CURLOPT_POST=>true,CURLOPT_POSTFIELDS=>$payload,CURLOPT_HTTPHEADER=>['Content-Type: application/json'],CURLOPT_TIMEOUT=>30,CURLOPT_SSL_VERIFYPEER=>true]);
