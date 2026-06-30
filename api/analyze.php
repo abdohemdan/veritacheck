@@ -105,7 +105,7 @@ function callGemini(string $content, string $tipo, string $apiKey, ?string $imag
         : [['text'=>$prompt]];
 
     $payload = json_encode(['contents'=>[['parts'=>$parts]],'generationConfig'=>['temperature'=>0.2,'maxOutputTokens'=>1024]]);
-    $url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key='.urlencode($apiKey);
+    $url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key='.urlencode($apiKey);
 
     // Retry automatico: se il modello AI è temporaneamente sovraccarico
     // (429/500/502/503) riprova fino a 3 volte, aspettando tra un tentativo e l'altro.
