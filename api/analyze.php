@@ -107,12 +107,25 @@ function callGemini(string $content, string $tipo, string $apiKey, ?string $imag
     $payload = json_encode(['contents'=>[['parts'=>$parts]],'generationConfig'=>['temperature'=>0.2,'maxOutputTokens'=>1024]]);
     $url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key='.urlencode($apiKey);
 
-    $ch = curl_init($url);
-    curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER=>true,CURLOPT_POST=>true,CURLOPT_POSTFIELDS=>$payload,CURLOPT_HTTPHEADER=>['Content-Type: application/json'],CURLOPT_TIMEOUT=>30,CURLOPT_SSL_VERIFYPEER=>true]);
-    $response = curl_exec($ch);
-    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    $curlErr  = curl_error($ch);
-    curl_close($ch);
+    // Retry automatico: se il modello AI è temporaneamente sovraccarico
+    // (429/500/502/503) riprova fino a 3 volte, aspettando tra un tentativo e l'altro.
+    $maxTentativi = 3;
+    $response = false; $httpCode = 0; $curlErr = '';
+    for ($tentativo = 1; $tentativo <= $maxTentativi; $tentativo++) {
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER=>true,CURLOPT_POST=>true,CURLOPT_POSTFIELDS=>$payload,CURLOPT_HTTPHEADER=>['Content-Type: application/json'],CURLOPT_TIMEOUT=>30,CURLOPT_SSL_VERIFYPEER=>true]);
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $curlErr  = curl_error($ch);
+        curl_close($ch);
+
+        if (!$curlErr && $httpCode === 200) break;                       // ok, esci
+        if ($tentativo < $maxTentativi && ($curlErr || in_array($httpCode, [429,500,502,503]))) {
+            sleep(2);                                                    // errore temporaneo: aspetta e riprova
+            continue;
+        }
+        break;
+    }
 
     if ($curlErr) return ['error' => 'Rete: '.$curlErr];
     if ($httpCode !== 200) { $e = json_decode($response,true); return ['error' => $e['error']['message'] ?? "HTTP $httpCode"]; }
